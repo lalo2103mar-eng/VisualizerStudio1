@@ -115,85 +115,194 @@ function average(start: number, end: number) {
   return b > a ? total / (b - a) / 255 : 0;
 }
 
+
 function draw() {
   animationId = requestAnimationFrame(draw);
+
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
+  const time = performance.now() * 0.001;
+
   ctx.clearRect(0, 0, w, h);
+
   if (analyser) analyser.getByteFrequencyData(data);
+
   const bass = average(0, 12);
   const mid = average(12, 90);
   const treble = average(90, 260);
-  const energy = Math.min(1, (bass * 0.55 + mid * 0.3 + treble * 0.15) * sensitivity);
+
+  const energy = Math.min(
+    1,
+    (bass * 0.55 + mid * 0.3 + treble * 0.15) * sensitivity
+  );
+
   const cx = w / 2;
   const cy = h / 2;
   const base = Math.min(w, h) * 0.19;
   const color = hueColor;
+
   ctx.save();
-  ctx.shadowBlur = glow * 0.22;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowBlur = glow * 0.35;
   ctx.shadowColor = color;
+  ctx.globalCompositeOperation = "lighter";
 
   if (style === "circular") {
-    const bars = 100;
-    for (let i = 0; i < bars; i++) {
-      const value = data.length ? data[Math.floor(i / bars * data.length * 0.72)] / 255 : 0;
-      const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-      const inner = base;
-      const outer = inner + 8 + value * 75 * sensitivity;
+
+    // Anillos reactivos
+    for (let ring = 0; ring < 3; ring++) {
+      const radius = base + ring * 17 + bass * 25 * sensitivity;
+
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
-      ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
+      ctx.arc(
+        cx,
+        cy,
+        radius + Math.sin(time * 2 + ring) * energy * 7,
+        0,
+        Math.PI * 2
+      );
+
       ctx.strokeStyle = color;
-      ctx.globalAlpha = 0.35 + value * 0.65;
-      ctx.lineWidth = 2.2;
+      ctx.globalAlpha = 0.2 + energy * 0.35;
+      ctx.lineWidth = 1.5 + energy * 2;
       ctx.stroke();
     }
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.arc(cx, cy, base - 7 + energy * 5, 0, Math.PI * 2);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, base * 0.55 + bass * 12, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.globalAlpha = 0.08 + energy * 0.16;
-    ctx.fill();
-  } else if (style === "wave") {
-    ctx.beginPath();
-    for (let x = 0; x < w; x++) {
-      const index = Math.floor(x / w * data.length);
-      const v = data[index] / 255;
-      const y = cy + Math.sin(x * 0.025) * (12 + v * 95 * sensitivity) * (0.3 + energy);
-      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+
+    // Barras de frecuencia
+    const bars = 144;
+
+    for (let i = 0; i < bars; i++) {
+      const index = Math.floor(i / bars * data.length * 0.75);
+      const value = data[index] / 255;
+
+      const angle = i / bars * Math.PI * 2;
+      const pulse = bass * 18 * sensitivity;
+
+      const inner = base + pulse;
+      const length = 8 + Math.pow(value, 0.8) * 125 * sensitivity;
+
+      const outer = inner + length;
+
+      ctx.beginPath();
+      ctx.moveTo(
+        cx + Math.cos(angle) * inner,
+        cy + Math.sin(angle) * inner
+      );
+
+      ctx.lineTo(
+        cx + Math.cos(angle) * outer,
+        cy + Math.sin(angle) * outer
+      );
+
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.35 + value * 0.65;
+      ctx.lineWidth = 1.5 + value * 2.5;
+      ctx.stroke();
     }
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    ctx.globalAlpha = 0.3;
+
+    // Núcleo pulsante
+    ctx.beginPath();
+    ctx.arc(cx, cy, base * 0.48 + bass * 18, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.08 + energy * 0.28;
+    ctx.fill();
+
+  } else if (style === "wave") {
+
+    // Tres capas independientes de ondas
+    const layers = [
+      { amplitude: 0.75, frequency: 0.020, speed: 1.0, alpha: 0.45 },
+      { amplitude: 1.15, frequency: 0.032, speed: 1.5, alpha: 0.75 },
+      { amplitude: 1.55, frequency: 0.045, speed: 2.0, alpha: 1.0 }
+    ];
+
+    layers.forEach((layer, layerIndex) => {
+      ctx.beginPath();
+
+      for (let x = 0; x <= w; x += 2) {
+        const index = Math.min(
+          data.length - 1,
+          Math.floor(x / w * data.length * 0.65)
+        );
+
+        const low = average(0, 18);
+        const value = data[index] / 255;
+
+        const amplitude =
+          (20 + bass * 100 + mid * 35) *
+          sensitivity *
+          layer.amplitude;
+
+        const primary = Math.sin(
+          x * layer.frequency + time * layer.speed
+        );
+
+        const secondary = Math.sin(
+          x * 0.012 - time * 2.2 + layerIndex
+        );
+
+        const y =
+          cy +
+          primary * amplitude * (0.25 + value) +
+          secondary * (15 + low * 35) +
+          (value - 0.5) * treble * 45;
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = layer.alpha;
+      ctx.lineWidth = 2 + layerIndex * 1.3 + energy * 2;
+      ctx.stroke();
+    });
+
+    // Línea central luminosa
     ctx.beginPath();
     ctx.moveTo(0, cy);
     ctx.lineTo(w, cy);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.2 + energy * 0.3;
+    ctx.lineWidth = 1;
     ctx.stroke();
+
   } else {
-    const count = 90;
+
+    // Campo de partículas
+    const count = 150;
+
     for (let i = 0; i < count; i++) {
       const angle = i * 2.399;
-      const value = data.length ? data[(i * 7) % data.length] / 255 : 0;
-      const radius = 15 + ((i * 17) % 110) + value * 45 * sensitivity + energy * 18;
-      const x = cx + Math.cos(angle) * radius;
-      const y = cy + Math.sin(angle) * radius;
+      const value = data[(i * 7) % data.length] / 255;
+
+      const orbit = (i * 19) % 135;
+      const movement = Math.sin(time * 1.8 + i) * 9;
+
+      const radius =
+        12 +
+        orbit +
+        value * 65 * sensitivity +
+        energy * 20 +
+        movement;
+
+      const x = cx + Math.cos(angle + time * 0.12) * radius;
+      const y = cy + Math.sin(angle + time * 0.12) * radius;
+
+      const size = 1 + value * 4 + energy * 1.5;
+
       ctx.beginPath();
-      ctx.arc(x, y, 1 + value * 3, 0, Math.PI * 2);
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.25 + value * 0.75;
       ctx.fill();
     }
   }
+
   ctx.restore();
 }
 
-draw();
 
 fileInput.addEventListener("change", () => {
   const file = fileInput.files?.[0];
