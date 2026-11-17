@@ -302,7 +302,7 @@ function draw() {
 
   ctx.restore();
 }
-
+draw();
 
 fileInput.addEventListener("change", () => {
   const file = fileInput.files?.[0];
