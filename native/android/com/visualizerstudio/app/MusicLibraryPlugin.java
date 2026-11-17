@@ -132,4 +132,3 @@ public class MusicLibraryPlugin extends Plugin {
         }
     }
 }
-MusicLibraryPlugin.java.
