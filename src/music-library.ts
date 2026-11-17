@@ -1,5 +1,5 @@
 
-import { registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 
 export interface MusicSong {
   id: number;
@@ -26,5 +26,10 @@ interface MusicLibraryPlugin {
 const MusicLibrary = registerPlugin<MusicLibraryPlugin>(
   "MusicLibrary"
 );
+
+export async function getSongUrl(id: number): Promise<string> {
+  const result = await MusicLibrary.getSongFile({ id });
+  return Capacitor.convertFileSrc(result.path);
+}
 
 export default MusicLibrary;
