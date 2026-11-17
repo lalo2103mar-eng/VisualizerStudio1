@@ -1,4 +1,5 @@
 import "./style.css";
+import MusicLibrary, { getSongUrl, type MusicSong } from "./music-library";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
@@ -20,6 +21,20 @@ app.innerHTML = `
 
     <section class="panel">
       <h2>Tu música</h2>
+<section class="panel">
+  <h2>Biblioteca musical</h2>
+  <p class="hint">Explora las canciones guardadas en tu teléfono.</p>
+
+  <button id="load-library" class="primary">
+    ♫ Abrir biblioteca
+  </button>
+
+  <p id="library-status" class="hint">
+    Biblioteca sin cargar
+  </p>
+
+  <div id="song-list"></div>
+</section>
       <label class="file-button" for="audio-file">＋ Seleccionar archivo de audio</label>
       <input id="audio-file" type="file" accept="audio/mpeg,audio/mp4,audio/aac,.mp3,.m4a,.aac,.wav,.ogg" />
       <div class="controls">
@@ -72,6 +87,14 @@ const sensitivityValue = document.querySelector<HTMLOutputElement>("#sensitivity
 const colorInput = document.querySelector<HTMLInputElement>("#color")!;
 const glowInput = document.querySelector<HTMLInputElement>("#glow")!;
 const glowValue = document.querySelector<HTMLOutputElement>("#glow-value")!;
+const libraryButton =
+  document.querySelector<HTMLButtonElement>("#load-library")!;
+
+const libraryStatus =
+  document.querySelector<HTMLElement>("#library-status")!;
+
+const songList =
+  document.querySelector<HTMLDivElement>("#song-list")!;
 
 let audioContext: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
@@ -309,6 +332,80 @@ layers.forEach((layer, layerIndex) => {
   ctx.restore();
 }
 draw();
+
+let loadedSongs: MusicSong[] = [];
+
+libraryButton.addEventListener("click", async () => {
+  libraryButton.disabled = true;
+  libraryStatus.textContent = "Buscando canciones...";
+
+  try {
+    const result = await MusicLibrary.requestAccess();
+    loadedSongs = result.songs;
+
+    songList.innerHTML = "";
+
+    if (loadedSongs.length === 0) {
+      libraryStatus.textContent = "No encontramos canciones en tu biblioteca.";
+      return;
+    }
+
+    libraryStatus.textContent =
+      `${loadedSongs.length} canciones encontradas`;
+
+    loadedSongs.forEach((song) => {
+      const item = document.createElement("button");
+      item.className = "song-item";
+      item.textContent =
+        `${song.title || song.name} — ${song.artist || "Artista desconocido"}`;
+
+      item.addEventListener("click", async () => {
+        try {
+          libraryStatus.textContent = "Preparando canción...";
+
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+          }
+
+          audio.src = await getSongUrl(song.id);
+          audio.load();
+
+          trackName.textContent = song.title || song.name;
+          libraryStatus.textContent = "Canción cargada";
+
+          playButton.disabled = false;
+          stopButton.disabled = false;
+
+          setupAudio();
+
+          if (audioContext?.state === "suspended") {
+            await audioContext.resume();
+          }
+
+          await audio.play();
+
+          playButton.textContent = "Ⅱ Pausar";
+          status.textContent = "Reproduciendo";
+        } catch (error) {
+          console.error(error);
+          libraryStatus.textContent =
+            "No se pudo reproducir esta canción.";
+        }
+      });
+
+      songList.appendChild(item);
+    });
+
+  } catch (error) {
+    console.error(error);
+    libraryStatus.textContent =
+      "No se pudo acceder a la biblioteca musical.";
+  } finally {
+    libraryButton.disabled = false;
+  }
+});
+
 
 fileInput.addEventListener("change", () => {
   const file = fileInput.files?.[0];
