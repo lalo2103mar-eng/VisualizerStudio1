@@ -15,6 +15,12 @@ interface MusicLibraryPlugin {
   requestAccess(): Promise<{
     songs: MusicSong[];
   }>;
+
+  getSongFile(options: {
+    id: number;
+  }): Promise<{
+    path: string;
+  }>;
 }
 
 const MusicLibrary = registerPlugin<MusicLibraryPlugin>(
