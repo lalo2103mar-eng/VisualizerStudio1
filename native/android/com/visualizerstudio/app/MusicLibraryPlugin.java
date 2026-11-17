@@ -52,6 +52,70 @@ public class MusicLibraryPlugin extends Plugin {
         }
     }
 
+@PluginMethod
+public void getSongFile(PluginCall call) {
+    Long id = call.getLong("id");
+
+    if (id == null) {
+        call.reject("Falta el identificador de la canción.");
+        return;
+    }
+
+    Uri songUri = ContentUris.withAppendedId(
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+        id
+    );
+
+    String extension = ".audio";
+
+    try (Cursor cursor = getContext().getContentResolver().query(
+        songUri,
+        new String[]{MediaStore.Audio.Media.DISPLAY_NAME},
+        null,
+        null,
+        null
+    )) {
+        if (cursor != null && cursor.moveToFirst()) {
+            String name = cursor.getString(0);
+            int dot = name.lastIndexOf(".");
+            if (dot >= 0) {
+                extension = name.substring(dot).toLowerCase();
+            }
+        }
+
+        File outputFile = new File(
+            getContext().getCacheDir(),
+            "music_" + id + extension
+        );
+
+        try (
+            InputStream input = getContext()
+                .getContentResolver()
+                .openInputStream(songUri);
+            FileOutputStream output = new FileOutputStream(outputFile)
+        ) {
+            if (input == null) {
+                call.reject("No se pudo abrir la canción.");
+                return;
+            }
+
+            byte[] buffer = new byte[8192];
+            int length;
+
+            while ((length = input.read(buffer)) != -1) {
+                output.write(buffer, 0, length);
+            }
+        }
+
+        JSObject result = new JSObject();
+        result.put("path", outputFile.getAbsolutePath());
+        call.resolve(result);
+
+    } catch (Exception error) {
+        call.reject("No se pudo preparar la canción.", error);
+    }
+}
+
     @PermissionCallback
     private void permissionCallback(PluginCall call) {
         String alias = Build.VERSION.SDK_INT >= 33
