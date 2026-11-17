@@ -443,19 +443,6 @@ playButton.addEventListener("click", async () => {
     status.textContent = "Error de reproducción";
   }
 });
-  if (!audio.src) return;
-  setupAudio();
-  if (audioContext?.state === "suspended") await audioContext.resume();
-  if (audio.paused) {
-    await audio.play();
-    playButton.textContent = "Ⅱ Pausar";
-    status.textContent = "Reproduciendo";
-  } else {
-    audio.pause();
-    playButton.textContent = "▶ Reproducir";
-    status.textContent = "En pausa";
-  }
-});
 
 stopButton.addEventListener("click", () => {
   audio.pause();
