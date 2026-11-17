@@ -82,11 +82,13 @@ let sensitivity = 1.4;
 let glow = 65;
 let hueColor = "#8b5cf6";
 let animationId = 0;
+let lastFrameTime = 0;
+const FRAME_INTERVAL = 1000 / 30;
 let objectUrl: string | null = null;
 
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -116,8 +118,11 @@ function average(start: number, end: number) {
 }
 
 
-function draw() {
+function draw(timestamp: number = 0) {
   animationId = requestAnimationFrame(draw);
+
+  if (timestamp - lastFrameTime < FRAME_INTERVAL) return;
+  lastFrameTime = timestamp;
 
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
@@ -144,7 +149,7 @@ function draw() {
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.shadowBlur = glow * 0.35;
+  ctx.shadowBlur = glow * 0.20;
   ctx.shadowColor = color;
   ctx.globalCompositeOperation = "lighter";
 
@@ -217,7 +222,9 @@ function draw() {
       { amplitude: 1.55, frequency: 0.045, speed: 2.0, alpha: 1.0 }
     ];
 
-    layers.forEach((layer, layerIndex) => {
+   const low = average(0, 18);
+
+layers.forEach((layer, layerIndex) => {
       ctx.beginPath();
 
       for (let x = 0; x <= w; x += 2) {
@@ -226,7 +233,6 @@ function draw() {
           Math.floor(x / w * data.length * 0.65)
         );
 
-        const low = average(0, 18);
         const value = data[index] / 255;
 
         const amplitude =
