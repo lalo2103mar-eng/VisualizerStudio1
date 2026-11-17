@@ -32,6 +32,30 @@ jobs:
 
       - name: Crear plataforma Android
         run: npx cap add android
+     
+      - name: Integrar biblioteca musical nativa
+        run: |
+          mkdir -p android/app/src/main/java/com/visualizerstudio/app
+
+          cp native/android/com/visualizerstudio/app/MusicLibraryPlugin.java android/app/src/main/java/com/visualizerstudio/app/
+
+          cat > android/app/src/main/java/com/visualizerstudio/app/MainActivity.java <<'EOF'
+          package com.visualizerstudio.app;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(MusicLibraryPlugin.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          EOF
+
+          python3 -c 'from pathlib import Path; p=Path("android/app/src/main/AndroidManifest.xml"); s=p.read_text(); marker="<application"; permissions="    <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\" />\n    <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\" android:maxSdkVersion=\"32\" />\n"; assert marker in s; p.write_text(s.replace(marker, permissions+marker, 1))'
+
 
       - name: Sincronizar Android
         run: npx cap sync android
