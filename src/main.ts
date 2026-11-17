@@ -368,25 +368,18 @@ libraryButton.addEventListener("click", async () => {
             objectUrl = null;
           }
 
-          audio.src = await getSongUrl(song.id);
-          audio.load();
+          audio.pause();
+audio.src = await getSongUrl(song.id);
+audio.load();
 
-          trackName.textContent = song.title || song.name;
-          libraryStatus.textContent = "Canción cargada";
+trackName.textContent = song.title || song.name;
+libraryStatus.textContent = "Canción preparada. Pulsa Reproducir.";
 
-          playButton.disabled = false;
-          stopButton.disabled = false;
+playButton.disabled = false;
+stopButton.disabled = false;
+playButton.textContent = "▶ Reproducir";
 
-          setupAudio();
-
-          if (audioContext?.state === "suspended") {
-            await audioContext.resume();
-          }
-
-          await audio.play();
-
-          playButton.textContent = "Ⅱ Pausar";
-          status.textContent = "Reproduciendo";
+status.textContent = "Audio cargado";
         } catch (error) {
           console.error(error);
           libraryStatus.textContent =
@@ -421,6 +414,35 @@ fileInput.addEventListener("change", () => {
 });
 
 playButton.addEventListener("click", async () => {
+  if (!audio.src) return;
+
+  try {
+    setupAudio();
+
+    if (audioContext?.state === "suspended") {
+      await audioContext.resume();
+    }
+
+    if (audio.paused) {
+      await audio.play();
+      playButton.textContent = "Ⅱ Pausar";
+      status.textContent = "Reproduciendo";
+    } else {
+      audio.pause();
+      playButton.textContent = "▶ Reproducir";
+      status.textContent = "En pausa";
+    }
+  } catch (error) {
+    console.error("Error de reproducción:", error);
+
+    const message = error instanceof Error
+      ? error.message
+      : String(error);
+
+    libraryStatus.textContent = `Error: ${message}`;
+    status.textContent = "Error de reproducción";
+  }
+});
   if (!audio.src) return;
   setupAudio();
   if (audioContext?.state === "suspended") await audioContext.resume();
