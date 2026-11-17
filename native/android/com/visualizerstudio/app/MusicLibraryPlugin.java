@@ -7,6 +7,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
 import com.getcapacitor.annotation.PermissionCallback;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
