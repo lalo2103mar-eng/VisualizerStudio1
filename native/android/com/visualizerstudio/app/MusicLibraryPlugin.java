@@ -1,3 +1,4 @@
+
 package com.visualizerstudio.app;
 
 import android.Manifest;
@@ -6,10 +7,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
-import com.getcapacitor.annotation.PermissionCallback;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -19,6 +16,11 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 
 @CapacitorPlugin(
     name = "MusicLibrary",
@@ -52,129 +54,76 @@ public class MusicLibraryPlugin extends Plugin {
         }
     }
 
+    @PluginMethod
+    public void getSongFile(PluginCall call) {
+        long id = call.getData().optLong("id", -1L);
 
-@PluginMethod
-public void getSongFile(PluginCall call) {
-    long id = call.getData().optLong("id", -1L);
-
-    if (id <= 0) {
-        call.reject(
-            "Identificador inválido. Datos recibidos: " +
-            call.getData().toString()
-        );
-        return;
-    }
-
-    Uri songUri = ContentUris.withAppendedId(
-        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-        id
-    );
-
-    String extension = ".audio";
-
-    try (Cursor cursor = getContext().getContentResolver().query(
-        songUri,
-        new String[]{MediaStore.Audio.Media.DISPLAY_NAME},
-        null,
-        null,
-        null
-    )) {
-        if (cursor != null && cursor.moveToFirst()) {
-            String name = cursor.getString(0);
-            int dot = name.lastIndexOf(".");
-            if (dot >= 0) {
-                extension = name.substring(dot).toLowerCase();
-            }
+        if (id <= 0) {
+            call.reject(
+                "Identificador inválido. Datos recibidos: " +
+                call.getData().toString()
+            );
+            return;
         }
 
-        File outputFile = new File(
-            getContext().getCacheDir(),
-            "music_" + id + extension
+        Uri songUri = ContentUris.withAppendedId(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            id
         );
 
-        try (
-            InputStream input = getContext()
+        String extension = ".audio";
+
+        try {
+            String[] projection = {
+                MediaStore.Audio.Media.DISPLAY_NAME
+            };
+
+            try (Cursor cursor = getContext()
                 .getContentResolver()
-                .openInputStream(songUri);
-            FileOutputStream output = new FileOutputStream(outputFile)
-        ) {
-            if (input == null) {
-                call.reject("No se pudo abrir la canción.");
-                return;
+                .query(songUri, projection, null, null, null)) {
+
+                if (cursor != null && cursor.moveToFirst()) {
+                    String name = cursor.getString(0);
+                    int dot = name.lastIndexOf(".");
+
+                    if (dot >= 0) {
+                        extension = name.substring(dot).toLowerCase();
+                    }
+                }
             }
 
-            byte[] buffer = new byte[8192];
-            int length;
+            File outputFile = new File(
+                getContext().getCacheDir(),
+                "music_" + id + extension
+            );
 
-            while ((length = input.read(buffer)) != -1) {
-                output.write(buffer, 0, length);
+            try (
+                InputStream input = getContext()
+                    .getContentResolver()
+                    .openInputStream(songUri);
+                FileOutputStream output = new FileOutputStream(outputFile)
+            ) {
+                if (input == null) {
+                    call.reject("No se pudo abrir la canción.");
+                    return;
+                }
+
+                byte[] buffer = new byte[8192];
+                int length;
+
+                while ((length = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, length);
+                }
             }
+
+            JSObject result = new JSObject();
+            result.put("path", outputFile.getAbsolutePath());
+            call.resolve(result);
+
+        } catch (Exception error) {
+            call.reject("No se pudo preparar la canción.", error);
         }
-
-        JSObject result = new JSObject();
-        result.put("path", outputFile.getAbsolutePath());
-        call.resolve(result);
-
-    } catch (Exception error) {
-        call.reject("No se pudo preparar la canción.", error);
     }
-}
-
-
-    Uri songUri = ContentUris.withAppendedId(
-        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-        id
-    );
-
-    String extension = ".audio";
-
-    try (Cursor cursor = getContext().getContentResolver().query(
-        songUri,
-        new String[]{MediaStore.Audio.Media.DISPLAY_NAME},
-        null,
-        null,
-        null
-    )) {
-        if (cursor != null && cursor.moveToFirst()) {
-            String name = cursor.getString(0);
-            int dot = name.lastIndexOf(".");
-            if (dot >= 0) {
-                extension = name.substring(dot).toLowerCase();
-            }
-        }
-
-        File outputFile = new File(
-            getContext().getCacheDir(),
-            "music_" + id + extension
-        );
-
-        try (
-            InputStream input = getContext()
-                .getContentResolver()
-                .openInputStream(songUri);
-            FileOutputStream output = new FileOutputStream(outputFile)
-        ) {
-            if (input == null) {
-                call.reject("No se pudo abrir la canción.");
-                return;
-            }
-
-            byte[] buffer = new byte[8192];
-            int length;
-
-            while ((length = input.read(buffer)) != -1) {
-                output.write(buffer, 0, length);
-            }
-        }
-
-        JSObject result = new JSObject();
-        result.put("path", outputFile.getAbsolutePath());
-        call.resolve(result);
-
-    } catch (Exception error) {
-        call.reject("No se pudo preparar la canción.", error);
-    }
-}
 
     @PermissionCallback
     private void permissionCallback(PluginCall call) {
@@ -207,8 +156,13 @@ public void getSongFile(PluginCall call) {
 
         try (Cursor cursor = getContext()
             .getContentResolver()
-            .query(collection, projection, selection, null,
-                MediaStore.Audio.Media.TITLE + " ASC")) {
+            .query(
+                collection,
+                projection,
+                selection,
+                null,
+                MediaStore.Audio.Media.TITLE + " ASC"
+            )) {
 
             if (cursor != null) {
                 int idColumn = cursor.getColumnIndexOrThrow(
@@ -234,7 +188,8 @@ public void getSongFile(PluginCall call) {
                     long id = cursor.getLong(idColumn);
 
                     Uri songUri = ContentUris.withAppendedId(
-                        collection, id
+                        collection,
+                        id
                     );
 
                     JSObject song = new JSObject();
