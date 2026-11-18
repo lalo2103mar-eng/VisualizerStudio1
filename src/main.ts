@@ -19,8 +19,27 @@ app.innerHTML = `
       </div>
     </section>
 
-    <section class="panel">
-      <h2>Tu música</h2>
+    
+<section class="panel">
+  <h2>Reproductor</h2>
+
+  <div class="controls">
+    <button id="play" class="primary" disabled>▶ Reproducir</button>
+    <button id="stop" disabled>■ Detener</button>
+  </div>
+
+  <audio id="audio" controls></audio>
+
+  <label class="file-button" for="audio-file">
+    ＋ Seleccionar archivo de audio
+  </label>
+
+  <input id="audio-file" type="file"
+    accept="audio/mpeg,audio/mp4,audio/aac,.mp3,.m4a,.aac,.wav,.ogg" />
+
+  <p class="hint">Selecciona una canción de tu teléfono o de tu biblioteca.</p>
+</section>
+
 <section class="panel">
   <h2>Biblioteca musical</h2>
   <p class="hint">Explora las canciones guardadas en tu teléfono.</p>
@@ -35,18 +54,7 @@ app.innerHTML = `
 
   <div id="song-list"></div>
 </section>
-      <label class="file-button" for="audio-file">＋ Seleccionar archivo de audio</label>
-      <input id="audio-file" type="file" accept="audio/mpeg,audio/mp4,audio/aac,.mp3,.m4a,.aac,.wav,.ogg" />
-      <div class="controls">
-        <button id="play" class="primary" disabled>▶ Reproducir</button>
-        <button id="stop" disabled>■ Detener</button>
-      </div>
-      <audio id="audio" controls></audio>
-      <p class="hint">La compatibilidad M4A depende del códec del archivo y del navegador Android.</p>
-    </section>
 
-    <section class="panel">
-      <h2>Estilo visual</h2>
       <div class="style-grid">
         <button class="style-choice active" data-style="circular">◉<span>Circular</span></button>
         <button class="style-choice" data-style="wave">〰<span>Ondas</span></button>
@@ -381,10 +389,14 @@ playButton.textContent = "▶ Reproducir";
 
 status.textContent = "Audio cargado";
         } catch (error) {
-          console.error(error);
-          libraryStatus.textContent =
-            "No se pudo reproducir esta canción.";
-        }
+  console.error("Error al cargar canción:", error);
+
+  const message = error instanceof Error
+    ? error.message
+    : String(error);
+
+  libraryStatus.textContent = `Error: ${message}`;
+}
       });
 
       songList.appendChild(item);
